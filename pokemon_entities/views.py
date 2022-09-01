@@ -3,7 +3,9 @@ import json
 
 from django.http import HttpResponseNotFound
 from django.shortcuts import render
+from django.utils.timezone import localtime
 
+from pokemon_entities.models import PokemonEntity, Pokemon
 
 MOSCOW_CENTER = [55.751244, 37.618423]
 DEFAULT_IMAGE_URL = (
@@ -27,25 +29,29 @@ def add_pokemon(folium_map, lat, lon, image_url=DEFAULT_IMAGE_URL):
 
 
 def show_all_pokemons(request):
-    with open('pokemon_entities/pokemons.json', encoding='utf-8') as database:
-        pokemons = json.load(database)['pokemons']
-
     folium_map = folium.Map(location=MOSCOW_CENTER, zoom_start=12)
-    for pokemon in pokemons:
-        for pokemon_entity in pokemon['entities']:
-            add_pokemon(
-                folium_map, pokemon_entity['lat'],
-                pokemon_entity['lon'],
-                pokemon['img_url']
-            )
+    pokemon_entities = PokemonEntity.objects.select_related('pokemon').filter(
+        appeared_at__lte=localtime(),
+        disappeared_at__gte=localtime(),
+    )
+    for pokemon_entity in pokemon_entities:
+        add_pokemon(
+            folium_map, pokemon_entity.lat,
+            pokemon_entity.lng,
+            request.build_absolute_uri(pokemon_entity.pokemon.image.url)
+        )
 
     pokemons_on_page = []
-    for pokemon in pokemons:
-        pokemons_on_page.append({
-            'pokemon_id': pokemon['pokemon_id'],
-            'img_url': pokemon['img_url'],
-            'title_ru': pokemon['title_ru'],
-        })
+    for pokemon_entity in pokemon_entities:
+        pokemons_on_page.append(
+            {
+                'pokemon_id': pokemon_entity.pokemon.id,
+                'img_url': request.build_absolute_uri(
+                    pokemon_entity.pokemon.image.url
+                ),
+                'title_ru': pokemon_entity.pokemon.title,
+            }
+        )
 
     return render(request, 'mainpage.html', context={
         'map': folium_map._repr_html_(),
@@ -54,22 +60,43 @@ def show_all_pokemons(request):
 
 
 def show_pokemon(request, pokemon_id):
-    with open('pokemon_entities/pokemons.json', encoding='utf-8') as database:
-        pokemons = json.load(database)['pokemons']
-
-    for pokemon in pokemons:
-        if pokemon['pokemon_id'] == int(pokemon_id):
-            requested_pokemon = pokemon
-            break
-    else:
+    try:
+        requested_pokemon = Pokemon.objects.get(id=pokemon_id)
+    except Pokemon.DoesNotExist:
         return HttpResponseNotFound('<h1>Такой покемон не найден</h1>')
 
+    pokemon = {"pokemon_id": pokemon_id,
+        "title_ru": requested_pokemon.title,
+        "img_url": request.build_absolute_uri(requested_pokemon.image.url),
+        "description": requested_pokemon.description,
+        "title_en": requested_pokemon.title_en,
+        "title_jp": requested_pokemon.title_jp,
+    }
+
+    if requested_pokemon.previous_evolutions.first():
+        pokemon["next_evolution"] = {
+            "title_ru": requested_pokemon.previous_evolutions.first().title,
+            "pokemon_id": requested_pokemon.previous_evolutions.first().id,
+            "img_url": request.build_absolute_uri(
+                requested_pokemon.previous_evolutions.first().image.url
+            ),
+        }
+    if requested_pokemon.previous_evolution:
+        pokemon["previous_evolution"] = {
+            "title_ru": requested_pokemon.previous_evolution.title,
+            "pokemon_id": requested_pokemon.previous_evolution.id,
+            "img_url": request.build_absolute_uri(
+                requested_pokemon.previous_evolution.image.url
+            ),
+        }
+
     folium_map = folium.Map(location=MOSCOW_CENTER, zoom_start=12)
-    for pokemon_entity in requested_pokemon['entities']:
+    pokemon_entities = PokemonEntity.objects.filter(pokemon=requested_pokemon)
+    for pokemon_entity in pokemon_entities:
         add_pokemon(
-            folium_map, pokemon_entity['lat'],
-            pokemon_entity['lon'],
-            pokemon['img_url']
+            folium_map, pokemon_entity.lat,
+            pokemon_entity.lng,
+            request.build_absolute_uri(pokemon_entity.pokemon.image.url)
         )
 
     return render(request, 'pokemon.html', context={
