@@ -5,12 +5,10 @@ from django.db import models  # noqa F401
 class Pokemon(models.Model):
     title = models.TextField(verbose_name='Название')
     title_en = models.TextField(
-        default='',
         blank=True,
         verbose_name='Название (англ.)',
     )
     title_jp = models.TextField(
-        default='',
         blank=True,
         verbose_name='Название (яп.)',
     )
@@ -21,7 +19,6 @@ class Pokemon(models.Model):
         verbose_name='Картинка',
     )
     description = models.TextField(
-        default='',
         blank=True,
         verbose_name='Описание',
     )
@@ -52,11 +49,15 @@ class PokemonEntity(models.Model):
         verbose_name='Время появления',
     )
     disappeared_at = models.DateTimeField(verbose_name='Время исчезновения')
-    level = models.IntegerField(verbose_name='Уровень')
-    health = models.IntegerField(verbose_name='Здоровье')
-    attack = models.IntegerField(verbose_name='Атака')
-    defense = models.IntegerField(verbose_name='Защита')
-    stamina = models.IntegerField(verbose_name='Выносливость')
+    level = models.IntegerField(null=True, blank=True, verbose_name='Уровень')
+    health = models.IntegerField(null=True, blank=True, verbose_name='Здоровье')
+    attack = models.IntegerField(null=True, blank=True, verbose_name='Атака')
+    defense = models.IntegerField(null=True, blank=True, verbose_name='Защита')
+    stamina = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Выносливость'
+    )
 
     def __str__(self):
         return f'{self.pokemon.title} в ({self.lat}, {self.lng})'

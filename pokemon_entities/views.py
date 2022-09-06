@@ -2,6 +2,7 @@ import folium
 
 from django.shortcuts import render, get_object_or_404
 from django.utils.timezone import localtime
+from itertools import groupby
 
 from pokemon_entities.models import PokemonEntity, Pokemon
 
@@ -40,14 +41,12 @@ def show_all_pokemons(request):
         )
 
     pokemons_on_page = []
-    for pokemon_entity in pokemon_entities:
+    for pokemon, grouper in groupby(pokemon_entities, lambda x: x.pokemon):
         pokemons_on_page.append(
             {
-                'pokemon_id': pokemon_entity.pokemon.id,
-                'img_url': request.build_absolute_uri(
-                    pokemon_entity.pokemon.image.url
-                ),
-                'title_ru': pokemon_entity.pokemon.title,
+                'pokemon_id': pokemon.id,
+                'img_url': request.build_absolute_uri(pokemon.image.url),
+                'title_ru': pokemon.title,
             }
         )
 
