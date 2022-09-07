@@ -89,7 +89,7 @@ def show_pokemon(request, pokemon_id):
         }
 
     folium_map = folium.Map(location=MOSCOW_CENTER, zoom_start=12)
-    pokemon_entities = PokemonEntity.objects.select_related('pokemon').filter(
+    pokemon_entities = pokemon.entities.filter(
         pokemon=pokemon,
         appeared_at__lte=localtime(),
         disappeared_at__gte=localtime(),
@@ -98,7 +98,7 @@ def show_pokemon(request, pokemon_id):
         add_pokemon(
             folium_map, pokemon_entity.lat,
             pokemon_entity.lng,
-            request.build_absolute_uri(pokemon_entity.pokemon.image.url),
+            request.build_absolute_uri(pokemon.image.url),
         )
 
     return render(request, 'pokemon.html', context={
